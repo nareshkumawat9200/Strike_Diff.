@@ -375,7 +375,7 @@ function render(){
   // header
   const cols=[
     {k:"sym",t:"Symbol"},{k:"exp",t:"Expiry"},{k:"lot",t:"Lot Size",num:1},
-    {k:"actual",t:"Actual Strike Diff",num:1},{k:"mc",t:"MC Strike Diff",num:1},{k:"l",t:"L Strike Diff",num:1}
+    {k:"actual",t:"Actual Strike Diff",num:1},{k:"mc",t:"Max Count Strike Diff",num:1},{k:"l",t:"Liquid Strike Diff",num:1}
   ];
   if(showHelper){ cols.push({k:"nLiq",t:"Liquid / Total",num:1}); }
   const thead=document.getElementById("thead");
