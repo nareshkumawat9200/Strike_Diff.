@@ -85,6 +85,12 @@
   .fetchbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
   .copycols{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:10px;font-size:12.5px}
   .copycols .collabel{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-right:4px}
+  .autoload{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+  .spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;
+    animation:sp .7s linear infinite;flex:none}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .srcbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px;font-size:12.5px;color:var(--muted)}
+  .srcbar .btn{padding:6px 11px;font-size:12px}
 </style>
 </head>
 <body>
@@ -93,8 +99,13 @@
     <h1>FNO Strike Difference Extractor</h1>
   </header>
 
+  <!-- Auto-load status -->
+  <div class="card hide" id="autoCard">
+    <div class="autoload"><span class="spin"></span><span id="autoMsg">Loading latest bhavcopy…</span></div>
+  </div>
+
   <!-- Upload -->
-  <div class="card" id="uploadCard">
+  <div class="card hide" id="uploadCard">
     <div class="drop" id="drop">
       <h3>Drop bhavcopy .zip or .csv here</h3>
       <input type="file" id="file" accept=".csv,.zip,text/csv,application/zip" class="hide">
@@ -111,6 +122,10 @@
 
   <!-- Controls + results -->
   <div class="card hide" id="resultCard">
+    <div class="srcbar">
+      <span id="srcInfo"></span>
+      <button class="btn sec" id="showUpload">Load a different file</button>
+    </div>
     <div class="controls">
       <div class="ctl">
         <label>Search symbol</label>
@@ -259,11 +274,41 @@ function ingest(text){
     rawGroups.push({sym:g.sym,exp:g.exp,type:g.type,lot:g.lot,strikes});
   }
   if(!rawGroups.length){ alert("No stock/index option rows found in this file."); return; }
+  showResults("Loaded from file");
+}
 
+// Reveal the results view once rawGroups is populated (from a file or the cache).
+function showResults(sourceLabel){
+  document.getElementById("autoCard").classList.add("hide");
   document.getElementById("uploadCard").classList.add("hide");
   document.getElementById("resultCard").classList.remove("hide");
-  expiriesInitialized=false;   // fresh file → default to current expiry
+  document.getElementById("srcInfo").innerHTML=sourceLabel;
+  expiriesInitialized=false;   // fresh data → default to current expiry
   compute();
+}
+
+// ---------- cached data (built daily by GitHub Actions) ----------
+async function loadCached(){
+  const auto=document.getElementById("autoCard");
+  auto.classList.remove("hide");
+  try{
+    const resp=await fetch("data/latest.json",{cache:"no-cache"});
+    if(!resp.ok) throw new Error("HTTP "+resp.status);
+    const d=await resp.json();
+    if(!d.groups||!d.groups.length) throw new Error("empty dataset");
+
+    // Rehydrate into the same shape the CSV parser produces.
+    rawGroups=d.groups.map(g=>({
+      sym:g.s, exp:g.e, type:g.t, lot:g.l,
+      strikes:g.k.map(a=>({k:a[0],vol:a[1],oi:a[2]}))
+    }));
+    showResults("Bhavcopy <b>"+d.tradeDate+"</b> &middot; auto-updated daily");
+    return true;
+  }catch(err){
+    auto.classList.add("hide");
+    document.getElementById("uploadCard").classList.remove("hide");
+    return false;
+  }
 }
 
 // ---------- compute per current threshold + scope ----------
@@ -498,22 +543,24 @@ document.getElementById("copyTsv").onclick=async()=>{
     ta.select(); document.execCommand("copy"); ta.remove(); flash("Copied "+n+" rows.");
   }
 };
-document.getElementById("reset").onclick=()=>{
+function showUploadCard(){
   rawGroups=[]; rows=[]; fileEl.value="";
   document.getElementById("resultCard").classList.add("hide");
   document.getElementById("uploadCard").classList.remove("hide");
-};
+}
+document.getElementById("reset").onclick=showUploadCard;
+document.getElementById("showUpload").onclick=showUploadCard;
 
 // NSE fetch wiring
 document.getElementById("fetchBtn").onclick=()=>fetchBhav("click");
 
-// default date = previous business day, then silent auto-attempt
-(function initFetch(){
+// On open: load the daily-cached dataset. Falls back to the manual card if absent.
+(function init(){
   const d=new Date(); d.setDate(d.getDate()-1);
   while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()-1);
   const iso=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
   document.getElementById("fetchDate").value=iso;
-  fetchBhav("auto");
+  loadCached();
 })();
 </script>
 </body>
