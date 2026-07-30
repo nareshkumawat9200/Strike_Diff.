@@ -124,7 +124,7 @@
   <div class="card hide" id="resultCard">
     <div class="srcbar">
       <span id="srcInfo"></span>
-      <button class="btn sec" id="showUpload">Load a different file</button>
+      <button class="btn sec" id="showUpload">Upload</button>
     </div>
     <div class="controls">
       <div class="ctl">
@@ -155,7 +155,6 @@
     <div class="actions">
       <button class="btn ok" id="dlCsv">Download CSV</button>
       <button class="btn" id="copyTsv">Copy</button>
-      <button class="btn sec" id="reset">Load another file</button>
     </div>
     <div class="copycols">
       <span class="collabel">Copy columns:</span>
@@ -302,7 +301,7 @@ async function loadCached(){
       sym:g.s, exp:g.e, type:g.t, lot:g.l,
       strikes:g.k.map(a=>({k:a[0],vol:a[1],oi:a[2]}))
     }));
-    showResults("Bhavcopy <b>"+d.tradeDate+"</b> &middot; auto-updated daily");
+    showResults("Bhavcopy <b>"+d.tradeDate+"</b>");
     return true;
   }catch(err){
     auto.classList.add("hide");
@@ -548,7 +547,6 @@ function showUploadCard(){
   document.getElementById("resultCard").classList.add("hide");
   document.getElementById("uploadCard").classList.remove("hide");
 }
-document.getElementById("reset").onclick=showUploadCard;
 document.getElementById("showUpload").onclick=showUploadCard;
 
 // NSE fetch wiring
@@ -565,3 +563,4 @@ document.getElementById("fetchBtn").onclick=()=>fetchBhav("click");
 </script>
 </body>
 </html>
+
