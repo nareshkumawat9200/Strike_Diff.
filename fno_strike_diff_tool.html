@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FNO Strike Difference Extractor</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#161d2e; --panel2:#1d2740; --border:#2a3654;
+    --text:#e6ecff; --muted:#93a0c0; --accent:#5b8cff; --accent2:#38d39f;
+    --warn:#ffb454; --danger:#ff6b6b; --chip:#24304d; --shadow:rgba(0,0,0,.4);
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#f4f6fb; --panel:#ffffff; --panel2:#eef2fb; --border:#d7deee;
+      --text:#101625; --muted:#5a6785; --accent:#2f6bff; --accent2:#0fa172;
+      --warn:#c77700; --danger:#d94040; --chip:#e7edfb; --shadow:rgba(20,30,60,.08);
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.45;font-size:14px}
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+  header h1{font-size:22px;margin:0 0 4px}
+  header p{margin:0;color:var(--muted)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-top:18px;
+    box-shadow:0 2px 10px var(--shadow)}
+  .drop{border:2px dashed var(--border);border-radius:14px;padding:34px;text-align:center;cursor:pointer;
+    transition:.15s;background:var(--panel2)}
+  .drop.hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--panel2))}
+  .drop h3{margin:0 0 6px;font-size:16px}
+  .drop small{color:var(--muted)}
+  .btn{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:600;
+    cursor:pointer;transition:.12s}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.sec{background:var(--chip);color:var(--text);border:1px solid var(--border)}
+  .btn.ok{background:var(--accent2)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .controls{display:flex;flex-wrap:wrap;gap:16px;align-items:center}
+  .ctl{display:flex;flex-direction:column;gap:4px}
+  .ctl label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  input[type=text],select{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+    color:var(--text);font-size:13px;min-width:180px}
+  select{cursor:pointer}
+  input[type=range]{width:180px;accent-color:var(--accent)}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:13px;cursor:pointer;user-select:none}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .chip{background:var(--chip);border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--text)}
+  .tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin-top:14px}
+  table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+  th,td{padding:8px 12px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--border)}
+  th{position:sticky;top:0;background:var(--panel2);cursor:pointer;user-select:none;font-size:11px;
+    text-transform:uppercase;letter-spacing:.4px;color:var(--muted);z-index:2}
+  th:hover{color:var(--text)}
+  th .arw{opacity:.5;font-size:10px}
+  tbody tr:hover{background:var(--panel2)}
+  td.num{text-align:center;font-variant-numeric:tabular-nums}
+  td.sym{font-weight:600}
+  .helper{color:var(--muted);font-size:12px}
+  .tag{font-size:10px;padding:1px 6px;border-radius:5px;background:var(--chip);color:var(--muted);margin-left:6px}
+  .na{color:var(--danger);opacity:.75}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .hide{display:none!important}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:14px;
+    max-width:760px;width:92%;padding:0;box-shadow:0 10px 40px var(--shadow)}
+  dialog::backdrop{background:rgba(0,0,0,.5)}
+  .dlg-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border)}
+  .dlg-head h3{margin:0;font-size:16px}
+  .dlg-body{padding:16px 18px}
+  textarea{width:100%;height:280px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;padding:12px;resize:vertical}
+  .steps{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--muted)}
+  .steps b{color:var(--text)}
+  .x{background:none;border:0;color:var(--muted);font-size:20px;cursor:pointer}
+  .note{color:var(--muted);font-size:12px;margin-top:8px}
+  a{color:var(--accent)}
+  .foot{color:var(--muted);font-size:12px;margin-top:26px;text-align:center}
+  input[type=date]{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;
+    color:var(--text);font-size:13px}
+  .fetchbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+  .copycols{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin-top:10px;font-size:12.5px}
+  .copycols .collabel{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin-right:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FNO Strike Difference Extractor</h1>
+  </header>
+
+  <!-- Upload -->
+  <div class="card" id="uploadCard">
+    <div class="drop" id="drop">
+      <h3>Drop bhavcopy .zip or .csv here</h3>
+      <input type="file" id="file" accept=".csv,.zip,text/csv,application/zip" class="hide">
+    </div>
+    <div class="fetchbar">
+      <div class="ctl">
+        <label>Download bhavcopy for date</label>
+        <input type="date" id="fetchDate">
+      </div>
+      <button class="btn" id="fetchBtn">Download</button>
+      <span class="note" id="fetchMsg" style="margin:0"></span>
+    </div>
+  </div>
+
+  <!-- Controls + results -->
+  <div class="card hide" id="resultCard">
+    <div class="controls">
+      <div class="ctl">
+        <label>Search symbol</label>
+        <input type="text" id="search" placeholder="e.g. RELIANCE, NIFTY">
+      </div>
+      <div class="ctl">
+        <label>Expiry</label>
+        <select id="expFilter"><option value="">All expiries</option></select>
+      </div>
+      <div class="ctl">
+        <label>Liquidity threshold: <span id="thVal">20</span>% of peak vol/OI</label>
+        <input type="range" id="th" min="0" max="50" step="0.5" value="20">
+      </div>
+      <div class="ctl">
+        <label>Include</label>
+        <div style="display:flex;gap:14px">
+          <label class="toggle"><input type="checkbox" id="incStk" checked> Stocks</label>
+          <label class="toggle"><input type="checkbox" id="incIdx"> Indices</label>
+        </div>
+      </div>
+      <div class="ctl">
+        <label>Columns</label>
+        <label class="toggle"><input type="checkbox" id="showHelper"> Show liquid/total helper</label>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn ok" id="dlCsv">Download CSV</button>
+      <button class="btn" id="copyTsv">Copy</button>
+      <button class="btn sec" id="reset">Load another file</button>
+    </div>
+    <div class="copycols">
+      <span class="collabel">Copy columns:</span>
+      <label class="toggle"><input type="checkbox" class="copycol" value="0" checked> Symbol</label>
+      <label class="toggle"><input type="checkbox" class="copycol" value="1" checked> Expiry</label>
+      <label class="toggle"><input type="checkbox" class="copycol" value="2" checked> Lot Size</label>
+      <label class="toggle"><input type="checkbox" class="copycol" value="3"> Actual</label>
+      <label class="toggle"><input type="checkbox" class="copycol" value="4"> MC</label>
+      <label class="toggle"><input type="checkbox" class="copycol" value="5" checked> L</label>
+    </div>
+    <p class="note" id="copyMsg"></p>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="tablewrap">
+      <table id="tbl">
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+const HEADERS = ["Symbol","Expiry","Lot Size","Actual Strike Diff","MC Strike Diff","L Strike Diff"];
+
+let rawGroups = [];   // parsed, filter-independent: {sym,exp,type,lot,strikes:[{k,vol,oi}]}
+let rows = [];        // computed rows for current threshold/scope
+let sortKey = "sym", sortDir = 1;
+
+// ---------- CSV parsing ----------
+function parseCSV(text){
+  // minimal RFC-ish parser (handles quotes), returns array of arrays
+  const out=[]; let row=[], field="", i=0, inq=false;
+  const n=text.length;
+  while(i<n){
+    const c=text[i];
+    if(inq){
+      if(c==='"'){ if(text[i+1]==='"'){field+='"';i+=2;continue;} inq=false;i++;continue; }
+      field+=c;i++;continue;
+    }
+    if(c==='"'){inq=true;i++;continue;}
+    if(c===','){row.push(field);field="";i++;continue;}
+    if(c==='\r'){i++;continue;}
+    if(c==='\n'){row.push(field);out.push(row);row=[];field="";i++;continue;}
+    field+=c;i++;
+  }
+  if(field.length||row.length){row.push(field);out.push(row);}
+  return out;
+}
+
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return null;
+  const r=Math.round(n*10000)/10000;
+  return Number.isInteger(r)? r : parseFloat(r.toFixed(4));
+}
+
+function gaps(sortedStrikes){
+  const g=[];
+  for(let i=1;i<sortedStrikes.length;i++){
+    g.push(Math.round((sortedStrikes[i]-sortedStrikes[i-1])*10000)/10000);
+  }
+  return g;
+}
+function minGap(g){ return g.length? Math.min(...g): null; }
+function modeGap(g){
+  if(!g.length) return null;
+  const m=new Map();
+  for(const x of g) m.set(x,(m.get(x)||0)+1);
+  let best=null,bc=-1;
+  for(const [k,c] of m){ if(c>bc || (c===bc && k<best)){best=k;bc=c;} }
+  return best;
+}
+
+// ---------- ingest ----------
+function ingest(text){
+  const table=parseCSV(text);
+  if(!table.length){ alert("Empty file."); return; }
+  const hdr=table[0].map(h=>h.trim());
+  const idx={};
+  hdr.forEach((h,i)=>idx[h]=i);
+  const need=["FinInstrmTp","TckrSymb","XpryDt","StrkPric","OptnTp","OpnIntrst","TtlTradgVol","NewBrdLotQty"];
+  const missing=need.filter(k=>!(k in idx));
+  if(missing.length){ alert("This doesn't look like an NSE UDiFF F&O bhavcopy.\nMissing columns: "+missing.join(", ")); return; }
+
+  const groups=new Map();
+  for(let r=1;r<table.length;r++){
+    const row=table[r];
+    if(row.length<hdr.length) continue;
+    const optn=(row[idx.OptnTp]||"").trim().toUpperCase();
+    if(optn!=="CE"&&optn!=="PE") continue;               // options only
+    const type=(row[idx.FinInstrmTp]||"").trim().toUpperCase();
+    if(type!=="STO"&&type!=="IDO") continue;              // stocks + indices
+    const strike=parseFloat(row[idx.StrkPric]);
+    if(!isFinite(strike)) continue;
+    const sym=(row[idx.TckrSymb]||"").trim();
+    const exp=(row[idx.XpryDt]||"").trim();
+    const vol=parseFloat(row[idx.TtlTradgVol])||0;
+    const oi=parseFloat(row[idx.OpnIntrst])||0;
+    const lot=parseInt(row[idx.NewBrdLotQty])||0;
+    const key=sym+"|"+exp;
+    let g=groups.get(key);
+    if(!g){ g={sym,exp,type,lot,strikeMap:new Map()}; groups.set(key,g); }
+    if(lot>g.lot) g.lot=lot;
+    const sm=g.strikeMap;
+    let s=sm.get(strike);
+    if(!s){ s={k:strike,vol:0,oi:0}; sm.set(strike,s); }
+    s.vol+=vol; s.oi+=oi;
+  }
+
+  rawGroups=[];
+  for(const g of groups.values()){
+    const strikes=[...g.strikeMap.values()].sort((a,b)=>a.k-b.k);
+    rawGroups.push({sym:g.sym,exp:g.exp,type:g.type,lot:g.lot,strikes});
+  }
+  if(!rawGroups.length){ alert("No stock/index option rows found in this file."); return; }
+
+  document.getElementById("uploadCard").classList.add("hide");
+  document.getElementById("resultCard").classList.remove("hide");
+  expiriesInitialized=false;   // fresh file → default to current expiry
+  compute();
+}
+
+// ---------- compute per current threshold + scope ----------
+function compute(){
+  const T=parseFloat(document.getElementById("th").value)/100;
+  const incStk=document.getElementById("incStk").checked;
+  const incIdx=document.getElementById("incIdx").checked;
+  rows=[];
+  for(const g of rawGroups){
+    if(g.type==="STO"&&!incStk) continue;
+    if(g.type==="IDO"&&!incIdx) continue;
+    const allK=g.strikes.map(s=>s.k);
+    const gAll=gaps(allK);
+    const actual=minGap(gAll);
+    const mc=modeGap(gAll);
+    const maxVol=Math.max(0,...g.strikes.map(s=>s.vol));
+    const maxOI=Math.max(0,...g.strikes.map(s=>s.oi));
+    const liquid=g.strikes.filter(s=> (maxVol>0&&s.vol>=T*maxVol) || (maxOI>0&&s.oi>=T*maxOI) )
+                          .map(s=>s.k).sort((a,b)=>a-b);
+    const lDiff=minGap(gaps(liquid));
+    rows.push({
+      sym:g.sym, exp:g.exp, type:g.type, lot:g.lot,
+      actual:fmt(actual), mc:fmt(mc), l:fmt(lDiff),
+      nLiq:liquid.length, nTot:allK.length
+    });
+  }
+  populateExpiries();
+  render();
+}
+
+// ---------- shared view (search + expiry filter + sort) ----------
+function getView(){
+  const q=document.getElementById("search").value.trim().toUpperCase();
+  const ef=document.getElementById("expFilter").value;
+  let view=rows.filter(r=> (!q || r.sym.toUpperCase().includes(q)) && (!ef || r.exp===ef));
+  view.sort((a,b)=>{
+    let x=a[sortKey], y=b[sortKey];
+    if(typeof x==="string"){ x=x||""; y=y||""; return x<y?-sortDir:x>y?sortDir:0; }
+    x = x===null||x===undefined?-Infinity:x; y=y===null||y===undefined?-Infinity:y;
+    return (x-y)*sortDir;
+  });
+  return view;
+}
+
+let expiriesInitialized=false;
+function populateExpiries(){
+  const sel=document.getElementById("expFilter");
+  const prev=sel.value;
+  const exps=[...new Set(rows.map(r=>r.exp))].sort();   // ISO dates sort chronologically; [0] = nearest/current
+  sel.innerHTML='<option value="">All expiries</option>'+exps.map(e=>`<option value="${e}">${e}</option>`).join("");
+  if(!expiriesInitialized){
+    sel.value = exps[0] || "";                          // default to current expiry on a freshly loaded file
+    expiriesInitialized=true;
+  } else {
+    sel.value = (prev==="" || exps.includes(prev)) ? prev : (exps[0] || "");   // preserve user's choice (incl. "All")
+  }
+}
+
+// ---------- render ----------
+function render(){
+  const showHelper=document.getElementById("showHelper").checked;
+  const view=getView();
+
+  // header
+  const cols=[
+    {k:"sym",t:"Symbol"},{k:"exp",t:"Expiry"},{k:"lot",t:"Lot Size",num:1},
+    {k:"actual",t:"Actual Strike Diff",num:1},{k:"mc",t:"MC Strike Diff",num:1},{k:"l",t:"L Strike Diff",num:1}
+  ];
+  if(showHelper){ cols.push({k:"nLiq",t:"Liquid / Total",num:1}); }
+  const thead=document.getElementById("thead");
+  thead.innerHTML=cols.map(c=>{
+    const arw = sortKey===c.k ? (sortDir===1?" &#9650;":" &#9660;") : "";
+    return `<th data-k="${c.k}">${c.t}<span class="arw">${arw}</span></th>`;
+  }).join("");
+  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=1;}
+    render();
+  });
+
+  // body
+  const cell=(v)=> v===null||v===undefined ? '<span class="na">N/A</span>' : v;
+  const tb=document.getElementById("tbody");
+  tb.innerHTML=view.map(r=>{
+    const typeTag = r.type==="IDO" ? '<span class="tag">IDX</span>' : '';
+    let h=`<tr>
+      <td class="sym">${r.sym}${typeTag}</td>
+      <td>${r.exp}</td>
+      <td class="num">${r.lot||'<span class="na">?</span>'}</td>
+      <td class="num">${cell(r.actual)}</td>
+      <td class="num">${cell(r.mc)}</td>
+      <td class="num">${cell(r.l)}</td>`;
+    if(showHelper) h+=`<td class="num helper">${r.nLiq} / ${r.nTot}</td>`;
+    h+=`</tr>`;
+    return h;
+  }).join("");
+
+  // stats
+  const nStk=rows.filter(r=>r.type==="STO").length;
+  const nIdx=rows.filter(r=>r.type==="IDO").length;
+  const syms=new Set(rows.map(r=>r.sym)).size;
+  document.getElementById("stats").innerHTML=
+    `<span class="chip"><b>${view.length}</b> rows shown</span>`+
+    `<span class="chip"><b>${syms}</b> symbols</span>`+
+    `<span class="chip"><b>${nStk}</b> stock&middot;expiry</span>`+
+    `<span class="chip"><b>${nIdx}</b> index&middot;expiry</span>`;
+}
+
+// ---------- export ----------
+function tableData(){
+  // export in current sorted+filtered view order
+  const view=getView();
+  const data=[HEADERS.slice()];
+  for(const r of view){
+    data.push([r.sym,r.exp,r.lot,
+      r.actual===null?"":r.actual, r.mc===null?"":r.mc, r.l===null?"":r.l]);
+  }
+  return data;
+}
+function toCSV(data){
+  return data.map(row=>row.map(c=>{
+    c=String(c);
+    return /[",\n]/.test(c) ? '"'+c.replace(/"/g,'""')+'"' : c;
+  }).join(",")).join("\n");
+}
+function download(name,content,mime){
+  const blob=new Blob([content],{type:mime});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function flash(msg){
+  const el=document.getElementById("copyMsg"); el.textContent=msg;
+  setTimeout(()=>{ if(el.textContent===msg) el.textContent=""; },2500);
+}
+
+// ---------- NSE auto-load (fetch + in-browser unzip) ----------
+function nseUrl(ymdStr){ return "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_"+ymdStr+"_F_0000.csv.zip"; }
+
+async function unzipFirstFile(buf){
+  const dv=new DataView(buf), u8=new Uint8Array(buf);
+  let eocd=-1;
+  for(let i=buf.byteLength-22;i>=0;i--){ if(dv.getUint32(i,true)===0x06054b50){eocd=i;break;} }
+  if(eocd<0) throw new Error("not a valid .zip");
+  const cdOff=dv.getUint32(eocd+16,true);
+  if(dv.getUint32(cdOff,true)!==0x02014b50) throw new Error("bad zip directory");
+  const method=dv.getUint16(cdOff+10,true);
+  const compSize=dv.getUint32(cdOff+20,true);
+  const localOff=dv.getUint32(cdOff+42,true);
+  if(dv.getUint32(localOff,true)!==0x04034b50) throw new Error("bad zip header");
+  const nameLen=dv.getUint16(localOff+26,true), extraLen=dv.getUint16(localOff+28,true);
+  const start=localOff+30+nameLen+extraLen;
+  const comp=u8.subarray(start,start+compSize);
+  if(method===0) return new TextDecoder().decode(comp);
+  if(method===8){
+    const stream=new Blob([comp]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  }
+  throw new Error("unsupported zip compression ("+method+")");
+}
+
+function triggerDownload(url){
+  const a=document.createElement("a"); a.href=url; a.download="";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// mode: "auto" = silent attempt on page load; "click" = user pressed the button
+async function fetchBhav(mode){
+  const val=document.getElementById("fetchDate").value; // yyyy-mm-dd
+  const msg=document.getElementById("fetchMsg");
+  if(!val){ if(mode!=="auto") msg.textContent="Pick a date first."; return; }
+  const ymdStr=val.replace(/-/g,"");
+  const url=nseUrl(ymdStr);
+  if(mode!=="auto") msg.textContent="Trying NSE…";
+  try{
+    const resp=await fetch(url);              // works only if CORS allows (usually won't)
+    if(!resp.ok) throw new Error("HTTP "+resp.status);
+    const csv=await unzipFirstFile(await resp.arrayBuffer());
+    msg.textContent=""; ingest(csv);
+  }catch(err){
+    if(mode==="auto"){ msg.textContent=""; return; }   // stay quiet on the load-time attempt
+    // Background fetch is CORS-blocked, but a plain download is not — trigger it.
+    msg.textContent="Downloading… drop the .zip above when it finishes.";
+    triggerDownload(url);
+  }
+}
+
+// ---------- wiring ----------
+const drop=document.getElementById("drop"), fileEl=document.getElementById("file");
+drop.onclick=()=>fileEl.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("hover");};
+drop.ondragleave=()=>drop.classList.remove("hover");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("hover");
+  const f=e.dataTransfer.files[0]; if(f) readFile(f);};
+fileEl.onchange=e=>{ const f=e.target.files[0]; if(f) readFile(f); };
+function readFile(f){
+  const rd=new FileReader();
+  rd.onload=async()=>{
+    try{
+      const buf=rd.result, b=new Uint8Array(buf);
+      const isZip = (b[0]===0x50 && b[1]===0x4b);          // "PK" magic → zip
+      const csv = isZip ? await unzipFirstFile(buf) : new TextDecoder().decode(buf);
+      ingest(csv);
+    }catch(err){ alert("Couldn't read that file: "+err.message); }
+  };
+  rd.readAsArrayBuffer(f);                                  // read bytes so we can detect zip vs csv
+}
+
+document.getElementById("th").oninput=e=>{
+  document.getElementById("thVal").textContent=e.target.value;
+  compute();
+};
+document.getElementById("incStk").onchange=compute;
+document.getElementById("incIdx").onchange=compute;
+document.getElementById("showHelper").onchange=render;
+document.getElementById("search").oninput=render;
+document.getElementById("expFilter").onchange=render;
+
+document.getElementById("dlCsv").onclick=()=>{
+  download("fno_strike_diff.csv", toCSV(tableData()), "text/csv");
+};
+document.getElementById("copyTsv").onclick=async()=>{
+  const cols=[...document.querySelectorAll(".copycol:checked")].map(c=>+c.value);
+  if(!cols.length){ flash("Select at least one column to copy."); return; }
+  const data=tableData().map(r=>cols.map(i=>r[i]));
+  const tsv=data.map(r=>r.join("\t")).join("\n");
+  const n=data.length-1;
+  try{ await navigator.clipboard.writeText(tsv); flash("Copied "+n+" rows × "+cols.length+" cols — paste into your sheet (top-left cell)."); }
+  catch(_){
+    const ta=document.createElement("textarea"); ta.value=tsv; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove(); flash("Copied "+n+" rows.");
+  }
+};
+document.getElementById("reset").onclick=()=>{
+  rawGroups=[]; rows=[]; fileEl.value="";
+  document.getElementById("resultCard").classList.add("hide");
+  document.getElementById("uploadCard").classList.remove("hide");
+};
+
+// NSE fetch wiring
+document.getElementById("fetchBtn").onclick=()=>fetchBhav("click");
+
+// default date = previous business day, then silent auto-attempt
+(function initFetch(){
+  const d=new Date(); d.setDate(d.getDate()-1);
+  while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()-1);
+  const iso=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  document.getElementById("fetchDate").value=iso;
+  fetchBhav("auto");
+})();
+</script>
+</body>
+</html>
