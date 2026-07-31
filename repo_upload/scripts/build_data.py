@@ -13,14 +13,16 @@ import os
 import sys
 import zipfile
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 URL = "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_{ymd}_F_0000.csv.zip"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 MAX_LOOKBACK = 10          # trading-day search window (covers long holiday weekends)
-OUT = os.path.join("data", "latest.json")
+# Resolve relative to this file (scripts/ -> ../data/), so the job works no
+# matter which directory it is invoked from.
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "latest.json")
 
 
 def fetch(ymd):
@@ -107,7 +109,7 @@ def main():
 
         payload = {
             "tradeDate": d.isoformat(),
-            "generatedAt": __import__("datetime").datetime.utcnow().isoformat(timespec="seconds") + "Z",
+            "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "groups": groups,
         }
         os.makedirs(os.path.dirname(OUT), exist_ok=True)
