@@ -51,10 +51,20 @@ def build(csv_text):
     rows = csvmod.DictReader(io.StringIO(csv_text))
 
     groups = {}
+    futures = {}          # (symbol, expiry) -> futures close price
     for r in rows:
+        typ = r.get("FinInstrmTp")
+
+        # Futures rows carry the close price for that contract month.
+        if typ in ("STF", "IDF"):
+            try:
+                futures[(r["TckrSymb"], r["XpryDt"])] = float(r["ClsPric"])
+            except (TypeError, ValueError, KeyError):
+                pass
+            continue
+
         if r.get("OptnTp") not in ("CE", "PE"):
             continue
-        typ = r.get("FinInstrmTp")
         if typ not in ("STO", "IDO"):
             continue
         try:
@@ -78,7 +88,11 @@ def build(csv_text):
     out = []
     for (sym, exp), g in groups.items():
         strikes = [[_num(k), int(v[0]), int(v[1])] for k, v in sorted(g["strikes"].items())]
-        out.append({"s": sym, "e": exp, "t": g["type"], "l": g["lot"], "k": strikes})
+        rec = {"s": sym, "e": exp, "t": g["type"], "l": g["lot"], "k": strikes}
+        fut = futures.get((sym, exp))
+        if fut is not None:                    # absent for index weeklies (no matching future)
+            rec["f"] = fut
+        out.append(rec)
     out.sort(key=lambda x: (x["s"], x["e"]))
     return out
 
